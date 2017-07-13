@@ -1,2 +1,27 @@
 # csv-loader
-Automatically create and populate a database using a set of CSV files.
+Automatically create tables and load data from CSV files to your database.
+
+This loader creates tables based on CSV headers. Then data is loaded using COPY command.
+It works only with PostgreSQL for now.
+
+## Getting Started
+
+```python
+from csv_loader import CsvLoader
+
+loader = CsvLoader("localhost", "5432", "tests", "ninja")
+loader.load_data("stats.csv")
+loader.load_data("departments.csv")
+loader.load_data("employees.csv")
+
+```
+
+## Dependencies
+
+```shell
+pip3 install psycopg2
+```
+
+## Author
+
+Kris Roksela kris@dataservices.pro
