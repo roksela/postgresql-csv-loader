@@ -12,11 +12,17 @@ class CsvLoader(object):
     It works only with PostgreSQL for now.
     """
 
-    _default_delimiter = ','
-    _default_quotechar = '"'
-    _default_table_prefix = "csv_"
+    DEFAULT_DELIMITER = ','
+    DEFAULT_QUOTE_CHAR = '"'
+    DEFAULT_ESCAPE_CHAR = '"'
+    DEFAULT_TABLE_PREFIX = "csv_"
+    DEFAULT_DATA_TYPE = "varchar"
 
-    def __init__(self, database_host, database_port, database_name, user, password=None, table_prefix=_default_table_prefix):
+    CREATE_STMT = "CREATE TABLE {} ({});"
+    COPY_STMT = "COPY {} ({}) FROM stdin WITH CSV HEADER DELIMITER '{}' QUOTE '{}' ESCAPE '{}'"
+
+    def __init__(self, database_host, database_port, database_name, user, password=None,
+                 table_prefix=DEFAULT_TABLE_PREFIX):
         """
         Constructs document with given database details.
 
@@ -34,7 +40,8 @@ class CsvLoader(object):
         self._password = password
         self._table_prefix = table_prefix
 
-    def load_data(self, file_path, delimiter=_default_delimiter, create_table=True):
+    def load_data(self, file_path, delimiter=DEFAULT_DELIMITER, quote_char=DEFAULT_QUOTE_CHAR,
+                  escape_char=DEFAULT_ESCAPE_CHAR, create_table=True):
         """
         Loads data from CSV file to the database.
 
@@ -44,35 +51,42 @@ class CsvLoader(object):
         Table name is specified based on CSV file name.
 
         :param file_path: path to a CSV file
-        :param delimiter: column delimiter (defaults to comma)
+        :param delimiter: a one-character string used to separate fields. It defaults to ','
+        :param quote_char: a one-character string used to quote fields containing special characters,
+        such as the delimiter or quotechar, or which contain new-line characters
+        :param escape_char: a one-character string used by the writer to escape the delimiter
         :param create_table: if True, table will be created
         """
-        original_headers = self._read_headers(file_path, delimiter)
-        headers = self._unify_headers(original_headers)
+        original_headers = self._read_headers(file_path, delimiter, quote_char, escape_char)
+        headers = self._normalize_headers(original_headers)
         table_name = self._generate_table_name(file_path)
 
         connection = connect(dbname=self._database_name, user=self._user, password= self._password,
                              host=self._database_host, port=self._database_port)
         if create_table:
             self._create_table(connection, headers, table_name)
-        self._copy_from_csv(connection, file_path, table_name, headers, delimiter)
+        self._copy_from_csv(connection, file_path, table_name, headers, delimiter, quote_char, escape_char)
 
         connection.close()
 
-    def _read_headers(self, file_path, delimiter=_default_delimiter):
+    def _read_headers(self, file_path, delimiter=DEFAULT_DELIMITER, quote_char=DEFAULT_QUOTE_CHAR,
+                  escape_char=DEFAULT_ESCAPE_CHAR):
         """
         Reads CSV header and provides a list of columns.
 
         :param file_path: path to a CSV file
-        :param delimiter: column delimiter (defaults to comma)
+        :param delimiter: a one-character string used to separate fields. It defaults to ','
+        :param quote_char: a one-character string used to quote fields containing special characters,
+        such as the delimiter or quotechar, or which contain new-line characters
+        :param escape_char: a one-character string used by the writer to escape the delimiter
         :return: list of CSV columns
         """
         with open(file_path, "r") as csv_file:
-            reader = csv.reader(csv_file, delimiter=delimiter, quotechar=self._default_quotechar)
+            reader = csv.reader(csv_file, delimiter=delimiter, quotechar=quote_char, escapechar=escape_char)
             original_headers = next(reader)
         return original_headers
 
-    def _unify_headers(self, original_headers):
+    def _normalize_headers(self, original_headers):
         """
         Simplifies column names:
         - all uppercase letters are replaced with underscore and lowercase letters.
@@ -102,15 +116,16 @@ class CsvLoader(object):
         :param headers: a list of columns
         :param table_name: a table name
         """
-        columns = [column + " varchar" for column in headers]
+        columns = ["{} {}".format(column, self.DEFAULT_DATA_TYPE) for column in headers]
         columns_def = ",".join(columns)
 
         cursor = connection.cursor()
-        cursor.execute("CREATE TABLE " + table_name + "(" + columns_def + ");")
+        cursor.execute(self.CREATE_STMT.format(table_name, columns_def))
         connection.commit()
         cursor.close()
 
-    def _copy_from_csv(self, connection, file_path, table_name, headers, delimiter):
+    def _copy_from_csv(self, connection, file_path, table_name, headers, delimiter, quote_char,
+                  escape_char):
         """
         Copies data from CSV to database.
 
@@ -118,12 +133,14 @@ class CsvLoader(object):
         :param file_path: path to a CSV file
         :param table_name: a table name
         :param headers: a list of columns
-        :param delimiter: CSV delimiter
+        :param delimiter: a one-character string used to separate fields. It defaults to ','
+        :param quote_char: a one-character string used to quote fields containing special characters,
+        such as the delimiter or quotechar, or which contain new-line characters
+        :param escape_char: a one-character string used by the writer to escape the delimiter
         """
         columns_def = ",".join(headers)
-        command = "COPY " + table_name + " (" + columns_def + ") FROM stdin " \
-                  "WITH CSV HEADER DELIMITER '" + delimiter + "' QUOTE '" + self._default_quotechar + "' " \
-                  "ESCAPE '" + self._default_quotechar + "'"
+        command = self.COPY_STMT.format(table_name, columns_def, delimiter,
+                                        quote_char, escape_char)
         # https://www.postgresql.org/docs/current/static/sql-copy.html
 
         cursor = connection.cursor()
@@ -146,8 +163,10 @@ class CsvLoader(object):
         :param text: text to simplify
         :return: simplified text
         """
-        # replace <letter in uppercase> with (_ + <letter in lowercase>)
+        # replace <letter in uppercase> with <letter in lowercase prefixed by underscore>)
+        # e.g. SimpleText -> _simple_text
         unified = re.sub('([A-Z]{1})', r'_\1', text).lower()
+        # replace all special characters with underscore
         unified = re.sub('[^0-9a-zA-Z]+', '_', unified)
 
         # remove underscore at the beginning

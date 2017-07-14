@@ -9,7 +9,7 @@ It works only with PostgreSQL for now.
 ```python
 from csv_loader import CsvLoader
 
-loader = CsvLoader("localhost", "5432", "tests", "ninja")
+loader = CsvLoader("host", 5432, "db_name", "user", "password")
 loader.load_data("stats.csv")
 loader.load_data("departments.csv")
 loader.load_data("employees.csv")
