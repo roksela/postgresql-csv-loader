@@ -1,5 +1,5 @@
 import unittest
-from csv_loader import CsvLoader
+from postgresql_csv_loader import CsvLoader
 from psycopg2 import connect
 
 
