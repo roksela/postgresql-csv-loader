@@ -16,6 +16,20 @@ loader.load_data("employees.csv")
 
 ```
 
+## Logging
+
+```python
+import logging
+from postgresql_csv_loader import CsvLoader
+
+log_format = '%(asctime)s | %(name)s | %(levelname)s | %(message)s'
+logging.basicConfig(format=log_format, level=logging.INFO, stream=sys.stdout)
+
+loader = CsvLoader("host", 5432, "db_name", "user", "password")
+loader.load_data("stats.csv")
+
+```
+
 ## Dependencies
 
 ```shell

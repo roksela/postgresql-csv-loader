@@ -1,5 +1,7 @@
-import unittest
 import configparser
+import logging
+import sys
+import unittest
 from postgresql_csv_loader import CsvLoader
 from psycopg2 import connect
 
@@ -37,6 +39,9 @@ class TestCsvLoader(unittest.TestCase):
         # password provided in .pgpass
         # localhost:5440:tests:tests:real_password
         # https://www.postgresql.org/docs/9.3/static/libpq-pgpass.html
+
+        log_format = '%(asctime)s | %(name)s | %(levelname)s | %(message)s'
+        logging.basicConfig(format=log_format, level=logging.INFO, stream=sys.stdout)
 
     def test_original_headers(self):
         loader = self._get_loader()

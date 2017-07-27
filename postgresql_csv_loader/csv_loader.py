@@ -1,6 +1,7 @@
 import csv
-import re
+import logging
 import os
+import re
 from psycopg2 import connect
 
 
@@ -61,12 +62,17 @@ class CsvLoader(object):
         headers = self._normalize_headers(original_headers)
         table_name = self._generate_table_name(file_path)
 
+        logging.getLogger('CsvLoader').info('Connecting to database "{}"...'.format(self._database_name))
         connection = connect(dbname=self._database_name, user=self._user, password= self._password,
                              host=self._database_host, port=self._database_port)
         if create_table:
+            logging.getLogger('CsvLoader').info('Creating table "{}"...'.format(table_name))
             self._create_table(connection, headers, table_name)
+
+        logging.getLogger('CsvLoader').info('Loading data to table "{}"...'.format(table_name))
         self._copy_from_csv(connection, file_path, table_name, headers, delimiter, quote_char, escape_char)
 
+        logging.getLogger('CsvLoader').info('Finished loading to table "{}", closing connection.'.format(table_name))
         connection.close()
 
     def _read_headers(self, file_path, delimiter=DEFAULT_DELIMITER, quote_char=DEFAULT_QUOTE_CHAR,
