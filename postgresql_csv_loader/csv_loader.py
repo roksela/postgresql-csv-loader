@@ -42,7 +42,7 @@ class CsvLoader(object):
         self._table_prefix = table_prefix
 
     def load_data(self, file_path, delimiter=DEFAULT_DELIMITER, quote_char=DEFAULT_QUOTE_CHAR,
-                  escape_char=DEFAULT_ESCAPE_CHAR, create_table=True):
+                  escape_char=DEFAULT_ESCAPE_CHAR, create_table=True, encoding="utf-8"):
         """
         Loads data from CSV file to the database.
 
@@ -57,8 +57,9 @@ class CsvLoader(object):
         such as the delimiter or quotechar, or which contain new-line characters
         :param escape_char: a one-character string used by the writer to escape the delimiter
         :param create_table: if True, table will be created
+        :param encoding file encoding
         """
-        original_headers = self._read_headers(file_path, delimiter, quote_char, escape_char)
+        original_headers = self._read_headers(file_path, delimiter, quote_char, escape_char, encoding)
         headers = self._normalize_headers(original_headers)
         table_name = self._generate_table_name(file_path)
 
@@ -70,13 +71,13 @@ class CsvLoader(object):
             self._create_table(connection, headers, table_name)
 
         logging.getLogger('CsvLoader').info('Loading data to table "{}"...'.format(table_name))
-        self._copy_from_csv(connection, file_path, table_name, headers, delimiter, quote_char, escape_char)
+        self._copy_from_csv(connection, file_path, table_name, headers, delimiter, quote_char, escape_char, encoding)
 
         logging.getLogger('CsvLoader').info('Finished loading to table "{}", closing connection.'.format(table_name))
         connection.close()
 
     def _read_headers(self, file_path, delimiter=DEFAULT_DELIMITER, quote_char=DEFAULT_QUOTE_CHAR,
-                  escape_char=DEFAULT_ESCAPE_CHAR):
+                      escape_char=DEFAULT_ESCAPE_CHAR, encoding="utf-8"):
         """
         Reads CSV header and provides a list of columns.
 
@@ -85,9 +86,10 @@ class CsvLoader(object):
         :param quote_char: a one-character string used to quote fields containing special characters,
         such as the delimiter or quotechar, or which contain new-line characters
         :param escape_char: a one-character string used by the writer to escape the delimiter
+        :param encoding file encoding
         :return: list of CSV columns
         """
-        with open(file_path, "r") as csv_file:
+        with open(file_path, "r", encoding=encoding) as csv_file:
             reader = csv.reader(csv_file, delimiter=delimiter, quotechar=quote_char, escapechar=escape_char)
             original_headers = next(reader)
         return original_headers
@@ -130,8 +132,7 @@ class CsvLoader(object):
         connection.commit()
         cursor.close()
 
-    def _copy_from_csv(self, connection, file_path, table_name, headers, delimiter, quote_char,
-                  escape_char):
+    def _copy_from_csv(self, connection, file_path, table_name, headers, delimiter, quote_char, escape_char, encoding):
         """
         Copies data from CSV to database.
 
@@ -143,6 +144,7 @@ class CsvLoader(object):
         :param quote_char: a one-character string used to quote fields containing special characters,
         such as the delimiter or quotechar, or which contain new-line characters
         :param escape_char: a one-character string used by the writer to escape the delimiter
+        :param encoding file encoding
         """
         columns = ['"{}"'.format(column) for column in headers]
         columns_def = ",".join(columns)
@@ -151,7 +153,7 @@ class CsvLoader(object):
         # https://www.postgresql.org/docs/current/static/sql-copy.html
 
         cursor = connection.cursor()
-        with open(file_path, "r") as csv_file:
+        with open(file_path, "r", encoding=encoding) as csv_file:
             # cursor.copy_from(csv_file, table_name, columns=headers, sep=delimiter)
             cursor.copy_expert(command, csv_file)
             connection.commit()

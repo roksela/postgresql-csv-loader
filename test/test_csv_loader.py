@@ -17,12 +17,15 @@ class TestCsvLoader(unittest.TestCase):
     CSV_FILENAME_1 = "resources/stackoverflow_survey_results_public_sample.csv"
     CSV_FILENAME_2 = "resources/simple_table.csv"
     CSV_FILENAME_3 = "resources/illegal_column_names.csv"
+    CSV_FILENAME_4 = "resources/polish_characters.csv"
     CSV_1_RECORD_COUNT = 30
     CSV_2_RECORD_COUNT = 5
     CSV_3_RECORD_COUNT = 5
+    CSV_4_RECORD_COUNT = 1
     TABLE_NAME_1 = "csv_stackoverflow_survey_results_public_sample"
     TABLE_NAME_2 = "csv_simple_table"
     TABLE_NAME_3 = "csv_illegal_column_names"
+    TABLE_NAME_4 = "csv_polish_characters"
 
     SELECT_COUNT_STMT = "SELECT count(*) from {};"
     DROP_STMT = "DROP TABLE {};"
@@ -107,6 +110,14 @@ class TestCsvLoader(unittest.TestCase):
         result = self._check_count(self.TABLE_NAME_3)
         self._drop(self.TABLE_NAME_3)
         self.assertEqual(result, self.CSV_3_RECORD_COUNT)
+
+    def test_not_standard_encoding(self):
+        loader = self._get_loader()
+        loader.load_data(self.CSV_FILENAME_4, encoding='iso-8859-2')
+
+        result = self._check_count(self.TABLE_NAME_4)
+        # self._drop(self.TABLE_NAME_4)
+        self.assertEqual(result, self.CSV_4_RECORD_COUNT)
 
     def _get_loader(self):
         return CsvLoader(self.database_host, self.database_port, self.database_name, self.database_user)

@@ -30,6 +30,16 @@ loader.load_data("stats.csv")
 
 ```
 
+## Character encoding
+
+```python
+from postgresql_csv_loader import CsvLoader
+
+loader = CsvLoader("host", 5432, "db_name", "user", "password")
+loader.load_data("stats.csv", encoding='iso-8859-2')
+
+```
+
 ## Dependencies
 
 ```shell
