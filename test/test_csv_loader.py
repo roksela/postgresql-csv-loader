@@ -1,27 +1,42 @@
 import unittest
+import configparser
 from postgresql_csv_loader import CsvLoader
 from psycopg2 import connect
 
 
 class TestCsvLoader(unittest.TestCase):
+    """
+    Test CSV loader.
+
+    To run this test, you need to set up a postgresql database at localhost:5440.
+    Database name 'tests' and user 'tests'.
+    """
 
     CSV_FILENAME_1 = "resources/stackoverflow_survey_results_public_sample.csv"
     CSV_FILENAME_2 = "resources/simple_table.csv"
+    CSV_FILENAME_3 = "resources/illegal_column_names.csv"
     CSV_1_RECORD_COUNT = 30
     CSV_2_RECORD_COUNT = 5
+    CSV_3_RECORD_COUNT = 5
     TABLE_NAME_1 = "csv_stackoverflow_survey_results_public_sample"
     TABLE_NAME_2 = "csv_simple_table"
-
-    DATABASE_HOST = "localhost"
-    DATABASE_PORT = 5440
-    DATABASE_NAME = "tests"
-    DATABASE_USER = "tests"
-    # password provided in .pgpass
-    # localhost:5440:tests:tests:real_password
-    # https://www.postgresql.org/docs/9.3/static/libpq-pgpass.html
+    TABLE_NAME_3 = "csv_illegal_column_names"
 
     SELECT_COUNT_STMT = "SELECT count(*) from {};"
     DROP_STMT = "DROP TABLE {};"
+
+    def setUp(self):
+        config = configparser.ConfigParser()
+        config.read('db_config.ini')
+
+        self.database_host = config['DEFAULT']['database_host']
+        self.database_port = config['DEFAULT']['database_port']
+        self.database_name = config['DEFAULT']['database_name']
+        self.database_user = config['DEFAULT']['database_user']
+
+        # password provided in .pgpass
+        # localhost:5440:tests:tests:real_password
+        # https://www.postgresql.org/docs/9.3/static/libpq-pgpass.html
 
     def test_original_headers(self):
         loader = self._get_loader()
@@ -80,12 +95,20 @@ class TestCsvLoader(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             loader.load_data("non_existing_file.csv")
 
+    def test_illegal_columns(self):
+        loader = self._get_loader()
+        loader.load_data(self.CSV_FILENAME_3)
+
+        result = self._check_count(self.TABLE_NAME_3)
+        self._drop(self.TABLE_NAME_3)
+        self.assertEqual(result, self.CSV_3_RECORD_COUNT)
+
     def _get_loader(self):
-        return CsvLoader(self.DATABASE_HOST, self.DATABASE_PORT, self.DATABASE_NAME, self.DATABASE_USER)
+        return CsvLoader(self.database_host, self.database_port, self.database_name, self.database_user)
 
     def _check_count(self, table_name):
-        connection = connect(dbname=self.DATABASE_NAME, user=self.DATABASE_USER, password=None,
-                             host=self.DATABASE_HOST, port=self.DATABASE_PORT)
+        connection = connect(dbname=self.database_name, user=self.database_user, password=None,
+                             host=self.database_host, port=self.database_port)
         cursor = connection.cursor()
         cursor.execute(self.SELECT_COUNT_STMT.format(table_name))
         result = cursor.fetchone()
@@ -94,8 +117,8 @@ class TestCsvLoader(unittest.TestCase):
         return result[0]
 
     def _drop(self, table_name):
-        connection = connect(dbname=self.DATABASE_NAME, user=self.DATABASE_USER, password=None,
-                             host=self.DATABASE_HOST, port=self.DATABASE_PORT)
+        connection = connect(dbname=self.database_name, user=self.database_user, password=None,
+                             host=self.database_host, port=self.database_port)
         cursor = connection.cursor()
         cursor.execute(self.DROP_STMT.format(table_name))
         connection.commit()

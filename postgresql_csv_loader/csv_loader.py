@@ -116,7 +116,7 @@ class CsvLoader(object):
         :param headers: a list of columns
         :param table_name: a table name
         """
-        columns = ["{} {}".format(column, self.DEFAULT_DATA_TYPE) for column in headers]
+        columns = ['"{}" {}'.format(column, self.DEFAULT_DATA_TYPE) for column in headers]
         columns_def = ",".join(columns)
 
         cursor = connection.cursor()
@@ -138,7 +138,8 @@ class CsvLoader(object):
         such as the delimiter or quotechar, or which contain new-line characters
         :param escape_char: a one-character string used by the writer to escape the delimiter
         """
-        columns_def = ",".join(headers)
+        columns = ['"{}"'.format(column) for column in headers]
+        columns_def = ",".join(columns)
         command = self.COPY_STMT.format(table_name, columns_def, delimiter,
                                         quote_char, escape_char)
         # https://www.postgresql.org/docs/current/static/sql-copy.html
