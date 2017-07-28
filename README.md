@@ -20,6 +20,7 @@ loader.load_data("employees.csv")
 
 ```python
 import logging
+import sys
 from postgresql_csv_loader import CsvLoader
 
 log_format = '%(asctime)s | %(name)s | %(levelname)s | %(message)s'
