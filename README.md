@@ -4,6 +4,12 @@ Automatically create tables and load data from CSV files to your database.
 This loader creates tables based on CSV headers. Then data is loaded using COPY command.
 It works only with PostgreSQL for now.
 
+## Installation
+
+```sh
+pip3 install git+https://github.com/roksela/postgresql-csv-loader.git
+```
+
 ## Getting Started
 
 ```python
