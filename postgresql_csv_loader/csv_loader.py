@@ -15,8 +15,9 @@ class CsvLoader(object):
 
     DEFAULT_DELIMITER = ','
     DEFAULT_QUOTE_CHAR = '"'
-    DEFAULT_ESCAPE_CHAR = '"'
+    DEFAULT_ESCAPE_CHAR = None
     DEFAULT_TABLE_PREFIX = "csv_"
+    DEFAULT_DOUBLE_QUOTE = True
     DEFAULT_DATA_TYPE = "varchar"
 
     CREATE_STMT = "CREATE TABLE {} ({});"
@@ -59,10 +60,13 @@ class CsvLoader(object):
         :param create_table: if True, table will be created
         :param encoding file encoding
         """
+        # doublequote=True by default
+        # don't define escape char if it's the same as quote char
+        escape_char = None if (escape_char == quote_char) else escape_char
+
         original_headers = self._read_headers(file_path, delimiter, quote_char, escape_char, encoding)
         headers = self._normalize_headers(original_headers)
         table_name = self._generate_table_name(file_path)
-
         logging.getLogger('CsvLoader').info('Connecting to database "{}"...'.format(self._database_name))
         connection = connect(dbname=self._database_name, user=self._user, password= self._password,
                              host=self._database_host, port=self._database_port)
@@ -148,8 +152,10 @@ class CsvLoader(object):
         """
         columns = ['"{}"'.format(column) for column in headers]
         columns_def = ",".join(columns)
+
+        copy_from_escape_char = escape_char or quote_char  # use quote if escape is None
         command = self.COPY_STMT.format(table_name, columns_def, delimiter,
-                                        quote_char, escape_char)
+                                        quote_char, copy_from_escape_char)
         # https://www.postgresql.org/docs/current/static/sql-copy.html
 
         cursor = connection.cursor()
